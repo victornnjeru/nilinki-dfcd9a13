@@ -129,6 +129,7 @@ export default function BandProfile() {
         open={quoteDialogOpen}
         onOpenChange={setQuoteDialogOpen}
         bandName={band.name}
+        bandId={band.id}
       />
 
       <Footer />
