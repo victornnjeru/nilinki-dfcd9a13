@@ -167,7 +167,10 @@ export default function SignUp() {
         .insert({ user_id: authData.user.id, role: data.role });
 
       if (roleError) {
-        console.error("Role insert error:", roleError);
+        // Log only in development mode to avoid exposing internal details
+        if (import.meta.env.DEV) {
+          console.error("Role insert error:", roleError);
+        }
         // Continue anyway - role can be added later by admin if needed
       }
 
@@ -183,7 +186,10 @@ export default function SignUp() {
         });
 
         if (bandError) {
-          console.error("Band insert error:", bandError);
+          // Log only in development mode to avoid exposing internal details
+          if (import.meta.env.DEV) {
+            console.error("Band insert error:", bandError);
+          }
           toast({
             title: "Warning",
             description: "Account created but band profile setup failed. You can complete this later.",
@@ -202,7 +208,10 @@ export default function SignUp() {
           .eq("user_id", authData.user.id);
 
         if (profileError) {
-          console.error("Profile update error:", profileError);
+          // Log only in development mode to avoid exposing internal details
+          if (import.meta.env.DEV) {
+            console.error("Profile update error:", profileError);
+          }
           // Profile is auto-created by trigger, update might fail if trigger hasn't run yet
         }
       }
@@ -214,7 +223,10 @@ export default function SignUp() {
       
       navigate("/login");
     } catch (error) {
-      console.error("Signup error:", error);
+      // Log only in development mode to avoid exposing internal details
+      if (import.meta.env.DEV) {
+        console.error("Signup error:", error);
+      }
       toast({
         title: "Sign Up Failed",
         description: "An unexpected error occurred. Please try again.",

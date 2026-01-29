@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { supabase } from "@/integrations/supabase/client";
 
 const quoteSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
@@ -47,9 +48,10 @@ interface RequestQuoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bandName: string;
+  bandId: string;
 }
 
-export function RequestQuoteDialog({ open, onOpenChange, bandName }: RequestQuoteDialogProps) {
+export function RequestQuoteDialog({ open, onOpenChange, bandName, bandId }: RequestQuoteDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,17 +71,70 @@ export function RequestQuoteDialog({ open, onOpenChange, bandName }: RequestQuot
   const onSubmit = async (data: QuoteFormValues) => {
     setIsSubmitting(true);
     
-    // Simulate API call with validated data
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    onOpenChange(false);
-    form.reset();
-    
-    toast({
-      title: "Quote Request Sent!",
-      description: `Your inquiry has been sent to ${bandName}. They'll get back to you soon.`,
-    });
+    try {
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to submit a quote request.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Call the edge function with server-side validation
+      const { data: responseData, error } = await supabase.functions.invoke("submit-quote-request", {
+        body: {
+          bandId,
+          name: data.name,
+          email: data.email,
+          phone: data.phone || undefined,
+          eventType: data.eventType,
+          date: data.date,
+          location: data.location,
+          details: data.details,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Submission Failed",
+          description: "Unable to submit your quote request. Please try again.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (responseData?.error) {
+        toast({
+          title: "Submission Failed",
+          description: responseData.error,
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      onOpenChange(false);
+      form.reset();
+      
+      toast({
+        title: "Quote Request Sent!",
+        description: `Your inquiry has been sent to ${bandName}. They'll get back to you soon.`,
+      });
+    } catch {
+      toast({
+        title: "Submission Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
