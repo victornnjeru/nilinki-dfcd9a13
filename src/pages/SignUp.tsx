@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Music2, Eye, EyeOff, Users, Calendar } from "lucide-react";
+import { Music2, Eye, EyeOff, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { genres } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 
 const baseSchema = z.object({
   email: z
@@ -129,17 +130,99 @@ export default function SignUp() {
   const handleSubmit = async (data: z.infer<typeof bandSchema> | z.infer<typeof clientSchema>) => {
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    setIsLoading(false);
-    
-    toast({
-      title: "Account Created!",
-      description: "Welcome to Nilinki! (Demo mode - no backend connected)",
-    });
-    
-    navigate("/");
+    try {
+      // Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            full_name: data.role === "band" ? data.bandName : data.fullName,
+          },
+        },
+      });
+
+      if (authError) {
+        toast({
+          title: "Sign Up Failed",
+          description: authError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!authData.user) {
+        toast({
+          title: "Sign Up Failed",
+          description: "Unable to create account. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Insert user role
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: authData.user.id, role: data.role });
+
+      if (roleError) {
+        console.error("Role insert error:", roleError);
+        // Continue anyway - role can be added later by admin if needed
+      }
+
+      // Insert role-specific data
+      if (data.role === "band") {
+        const bandData = data as z.infer<typeof bandSchema>;
+        const { error: bandError } = await supabase.from("bands").insert({
+          user_id: authData.user.id,
+          name: bandData.bandName,
+          genre: bandData.genre,
+          location: bandData.location,
+          bio: bandData.bio || null,
+        });
+
+        if (bandError) {
+          console.error("Band insert error:", bandError);
+          toast({
+            title: "Warning",
+            description: "Account created but band profile setup failed. You can complete this later.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        const clientData = data as z.infer<typeof clientSchema>;
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: clientData.fullName,
+            company: clientData.company || null,
+            phone: clientData.phone || null,
+          })
+          .eq("user_id", authData.user.id);
+
+        if (profileError) {
+          console.error("Profile update error:", profileError);
+          // Profile is auto-created by trigger, update might fail if trigger hasn't run yet
+        }
+      }
+
+      toast({
+        title: "Account Created!",
+        description: "Please check your email to verify your account.",
+      });
+      
+      navigate("/login");
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Sign Up Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const roleCards = [
