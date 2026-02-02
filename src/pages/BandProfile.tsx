@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navbar } from "@/components/layout/Navbar";
@@ -11,15 +11,28 @@ import { RateCardSection } from "@/components/bands/profile/RateCardSection";
 import { ReviewsSection } from "@/components/bands/profile/ReviewsSection";
 import { UpcomingEvents } from "@/components/bands/profile/UpcomingEvents";
 import { RequestQuoteDialog } from "@/components/bands/profile/RequestQuoteDialog";
-import { getBandProfile } from "@/data/bandProfiles";
+import { useBandProfile } from "@/hooks/useBandProfile";
 
 export default function BandProfile() {
   const { id } = useParams<{ id: string }>();
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
   
-  const band = getBandProfile(id || "");
+  const { data: band, isLoading, error } = useBandProfile(id);
 
-  if (!band) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container py-20 flex flex-col items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading band profile...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !band) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
