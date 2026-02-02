@@ -1,13 +1,15 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Music } from "lucide-react";
+import { Music, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { BandCard } from "@/components/cards/BandCard";
 import { BandFilters, type FilterState } from "@/components/bands/BandFilters";
-import { mockBands } from "@/data/mockData";
+import { useBands } from "@/hooks/useBands";
 
 export default function Bands() {
+  const { data: bands = [], isLoading, error } = useBands();
+  
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     genre: "",
@@ -16,7 +18,7 @@ export default function Bands() {
   });
 
   const filteredBands = useMemo(() => {
-    return mockBands.filter((band) => {
+    return bands.filter((band) => {
       // Search filter
       if (
         filters.search &&
@@ -100,7 +102,32 @@ export default function Bands() {
           </motion.div>
 
           {/* Band Grid */}
-          {filteredBands.length > 0 ? (
+          {isLoading ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-20"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-muted-foreground">Loading bands...</p>
+            </motion.div>
+          ) : error ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center py-20 text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <Music className="h-8 w-8 text-destructive" />
+              </div>
+              <h3 className="font-display text-xl font-semibold text-foreground mb-2">
+                Failed to load bands
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                There was an error loading the bands. Please try again later.
+              </p>
+            </motion.div>
+          ) : filteredBands.length > 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
