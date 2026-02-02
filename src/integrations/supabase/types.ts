@@ -381,6 +381,8 @@ export type Database = {
         Returns: boolean
       }
       get_current_user_band_id: { Args: never; Returns: string }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "band" | "client"
