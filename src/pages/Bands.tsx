@@ -51,7 +51,7 @@ export default function Bands() {
 
       return true;
     });
-  }, [filters]);
+  }, [bands, filters]);
 
   return (
     <div className="min-h-screen bg-background">
