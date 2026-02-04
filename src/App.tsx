@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Bands from "./pages/Bands";
 import BandProfile from "./pages/BandProfile";
+import BandDashboard from "./pages/BandDashboard";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/bands" element={<Bands />} />
           <Route path="/bands/:id" element={<BandProfile />} />
+          <Route path="/dashboard" element={<BandDashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
