@@ -221,6 +221,39 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get band owner's email for notification
+    const { data: bandOwner } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("user_id", (await supabase.from("bands").select("user_id").eq("id", data.bandId).single()).data?.user_id)
+      .single();
+
+    // Get the band owner's auth email
+    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+    const ownerEmail = users?.find(u => u.id === bandOwner?.user_id)?.email;
+
+    // Send email notification (fire and forget - don't block on this)
+    if (ownerEmail) {
+      fetch(`${supabaseUrl}/functions/v1/send-booking-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          bandEmail: ownerEmail,
+          bandName: band.name,
+          clientName: data.name,
+          clientEmail: data.email,
+          clientPhone: data.phone,
+          eventType: data.eventType,
+          eventDate: data.date,
+          eventLocation: data.location,
+          message: data.details,
+        }),
+      }).catch(err => console.error("Failed to send notification email:", err));
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: `Quote request sent to ${band.name}` }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
