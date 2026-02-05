@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: "Nilinki <noreply@nilinki.lovable.app>",
+      from: "Nilinki <noreply@nilinki.com>",
       to: [data.bandEmail],
       subject: `New Booking Inquiry: ${data.eventType} on ${formattedDate}`,
       html: `
