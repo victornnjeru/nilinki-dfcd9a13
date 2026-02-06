@@ -2,9 +2,12 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Internal secret for service-to-service calls only
+const INTERNAL_API_SECRET = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-internal-secret",
 };
 
 interface NotificationRequest {
@@ -25,6 +28,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate internal secret - this function should only be called by other edge functions
+    const internalSecret = req.headers.get("x-internal-secret");
+    if (!INTERNAL_API_SECRET || internalSecret !== INTERNAL_API_SECRET) {
+      console.error("Unauthorized: Invalid or missing internal secret");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const data: NotificationRequest = await req.json();
 
     const formattedDate = new Date(data.eventDate).toLocaleDateString("en-US", {

@@ -2,10 +2,13 @@ import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Internal secret for service-to-service calls only
+const INTERNAL_API_SECRET = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 interface ClientConfirmationRequest {
@@ -23,6 +26,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate internal secret - this function should only be called by other edge functions
+    const internalSecret = req.headers.get("x-internal-secret");
+    if (!INTERNAL_API_SECRET || internalSecret !== INTERNAL_API_SECRET) {
+      console.error("Unauthorized: Invalid or missing internal secret");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const {
       clientName,
       clientEmail,
