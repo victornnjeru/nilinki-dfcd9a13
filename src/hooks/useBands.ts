@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Band } from "@/components/cards/BandCard";
+import { mapOperationError } from "@/lib/errorUtils";
 
 interface BandWithStats {
   id: string;
@@ -29,7 +30,7 @@ async function fetchBands(): Promise<Band[]> {
     .order("name");
 
   if (bandsError) {
-    throw new Error(`Failed to fetch bands: ${bandsError.message}`);
+    throw new Error(mapOperationError(bandsError, "fetch", "bands"));
   }
 
   if (!bands || bands.length === 0) {
@@ -42,7 +43,10 @@ async function fetchBands(): Promise<Band[]> {
     .select("band_id, rating");
 
   if (reviewsError) {
-    console.error("Failed to fetch reviews:", reviewsError);
+    // Log in dev only, don't expose to user - reviews are supplementary data
+    if (import.meta.env.DEV) {
+      console.error("Failed to fetch reviews:", reviewsError);
+    }
   }
 
   // Fetch rate cards for starting rates
@@ -51,7 +55,10 @@ async function fetchBands(): Promise<Band[]> {
     .select("band_id, price");
 
   if (rateCardsError) {
-    console.error("Failed to fetch rate cards:", rateCardsError);
+    // Log in dev only, don't expose to user - rate cards are supplementary data
+    if (import.meta.env.DEV) {
+      console.error("Failed to fetch rate cards:", rateCardsError);
+    }
   }
 
   // Calculate stats per band

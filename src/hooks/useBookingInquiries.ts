@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { mapOperationError } from "@/lib/errorUtils";
 
 export interface BookingInquiry {
   id: string;
@@ -22,7 +23,7 @@ async function fetchBookingInquiries(): Promise<BookingInquiry[]> {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
-    throw new Error("Not authenticated");
+    throw new Error("Please sign in to view inquiries");
   }
 
   // Fetch inquiries for the user's band (RLS handles filtering)
@@ -32,7 +33,7 @@ async function fetchBookingInquiries(): Promise<BookingInquiry[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to fetch inquiries: ${error.message}`);
+    throw new Error(mapOperationError(error, "fetch", "inquiries"));
   }
 
   return data || [];
@@ -45,7 +46,7 @@ async function updateInquiryStatus(id: string, status: string): Promise<void> {
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Failed to update inquiry: ${error.message}`);
+    throw new Error(mapOperationError(error, "update", "inquiry"));
   }
 }
 

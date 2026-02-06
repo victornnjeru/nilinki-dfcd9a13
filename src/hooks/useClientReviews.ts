@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { mapOperationError } from "@/lib/errorUtils";
 
 interface ReviewInput {
   bandId: string;
@@ -47,7 +48,7 @@ async function submitReview(input: ReviewInput): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
-    throw new Error("You must be logged in to submit a review");
+    throw new Error("Please sign in to submit a review");
   }
 
   const { error } = await supabase
@@ -61,7 +62,7 @@ async function submitReview(input: ReviewInput): Promise<void> {
     });
 
   if (error) {
-    throw new Error(`Failed to submit review: ${error.message}`);
+    throw new Error(mapOperationError(error, "create", "review"));
   }
 }
 
