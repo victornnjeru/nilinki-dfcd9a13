@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
     const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
     const ownerEmail = users?.find(u => u.id === bandOwner?.user_id)?.email;
 
-    // Send email notification (fire and forget - don't block on this)
+    // Send email notification to band owner (fire and forget - don't block on this)
     if (ownerEmail) {
       fetch(`${supabaseUrl}/functions/v1/send-booking-notification`, {
         method: "POST",
@@ -253,6 +253,23 @@ Deno.serve(async (req) => {
         }),
       }).catch(err => console.error("Failed to send notification email:", err));
     }
+
+    // Send confirmation email to client (fire and forget - don't block on this)
+    fetch(`${supabaseUrl}/functions/v1/send-client-confirmation`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        clientName: data.name,
+        clientEmail: data.email,
+        bandName: band.name,
+        eventType: data.eventType,
+        eventDate: data.date,
+        eventLocation: data.location,
+      }),
+    }).catch(err => console.error("Failed to send client confirmation email:", err));
 
     return new Response(
       JSON.stringify({ success: true, message: `Quote request sent to ${band.name}` }),
