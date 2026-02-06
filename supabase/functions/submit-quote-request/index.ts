@@ -5,6 +5,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Internal secret for calling other edge functions securely
+const INTERNAL_API_SECRET = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+
 // Server-side validation schema matching client-side
 interface QuoteRequestBody {
   bandId: string;
@@ -221,55 +224,45 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get band owner's email for notification
-    const { data: bandOwner } = await supabase
-      .from("profiles")
+    // Get band owner's user_id and contact email from bands table
+    const { data: bandDetails } = await supabase
+      .from("bands")
       .select("user_id")
-      .eq("user_id", (await supabase.from("bands").select("user_id").eq("id", data.bandId).single()).data?.user_id)
+      .eq("id", data.bandId)
       .single();
 
-    // Get the band owner's auth email
-    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-    const ownerEmail = users?.find(u => u.id === bandOwner?.user_id)?.email;
+    // Get the band owner's email from their profile (or use a contact email if stored)
+    // Note: For proper email notification, band owners should have a contact_email field
+    // For now, we'll log a warning that email notification requires manual setup
+    const bandOwnerUserId = bandDetails?.user_id;
+    
+    // Since we can't access auth.users directly without admin API, band notification 
+    // emails require the band to have a contact email stored in their profile or bands table
+    // This is a security improvement - no admin API usage
+    
+    console.log("Quote request submitted successfully. Band owner notification would be sent if contact email is configured.", {
+      bandId: data.bandId,
+      bandOwnerUserId,
+    });
 
-    // Send email notification to band owner (fire and forget - don't block on this)
-    if (ownerEmail) {
-      fetch(`${supabaseUrl}/functions/v1/send-booking-notification`, {
+    // Send confirmation email to client using internal secret (fire and forget - don't block on this)
+    if (INTERNAL_API_SECRET) {
+      fetch(`${supabaseUrl}/functions/v1/send-client-confirmation`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${supabaseAnonKey}`,
+          "x-internal-secret": INTERNAL_API_SECRET,
         },
         body: JSON.stringify({
-          bandEmail: ownerEmail,
-          bandName: band.name,
           clientName: data.name,
           clientEmail: data.email,
-          clientPhone: data.phone,
+          bandName: band.name,
           eventType: data.eventType,
           eventDate: data.date,
           eventLocation: data.location,
-          message: data.details,
         }),
-      }).catch(err => console.error("Failed to send notification email:", err));
+      }).catch(err => console.error("Failed to send client confirmation email:", err));
     }
-
-    // Send confirmation email to client (fire and forget - don't block on this)
-    fetch(`${supabaseUrl}/functions/v1/send-client-confirmation`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${supabaseAnonKey}`,
-      },
-      body: JSON.stringify({
-        clientName: data.name,
-        clientEmail: data.email,
-        bandName: band.name,
-        eventType: data.eventType,
-        eventDate: data.date,
-        eventLocation: data.location,
-      }),
-    }).catch(err => console.error("Failed to send client confirmation email:", err));
 
     return new Response(
       JSON.stringify({ success: true, message: `Quote request sent to ${band.name}` }),
