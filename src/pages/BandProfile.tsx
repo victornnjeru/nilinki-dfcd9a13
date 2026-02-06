@@ -123,6 +123,8 @@ export default function BandProfile() {
               reviews={band.reviews}
               rating={band.rating}
               reviewCount={band.reviewCount}
+              bandId={band.id}
+              bandName={band.name}
             />
           </TabsContent>
 
