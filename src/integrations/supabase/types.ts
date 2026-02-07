@@ -140,6 +140,7 @@ export type Database = {
       bands: {
         Row: {
           bio: string | null
+          contact_email: string | null
           cover_url: string | null
           created_at: string
           facebook: string | null
@@ -160,6 +161,7 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          contact_email?: string | null
           cover_url?: string | null
           created_at?: string
           facebook?: string | null
@@ -180,6 +182,7 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          contact_email?: string | null
           cover_url?: string | null
           created_at?: string
           facebook?: string | null
