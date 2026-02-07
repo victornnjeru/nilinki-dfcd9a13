@@ -190,10 +190,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify band exists
+    // Verify band exists and get contact_email for notifications
     const { data: band, error: bandError } = await supabase
       .from("bands")
-      .select("id, name")
+      .select("id, name, contact_email")
       .eq("id", data.bandId)
       .single();
 
@@ -224,26 +224,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get band owner's user_id and contact email from bands table
-    const { data: bandDetails } = await supabase
-      .from("bands")
-      .select("user_id")
-      .eq("id", data.bandId)
-      .single();
-
-    // Get the band owner's email from their profile (or use a contact email if stored)
-    // Note: For proper email notification, band owners should have a contact_email field
-    // For now, we'll log a warning that email notification requires manual setup
-    const bandOwnerUserId = bandDetails?.user_id;
-    
-    // Since we can't access auth.users directly without admin API, band notification 
-    // emails require the band to have a contact email stored in their profile or bands table
-    // This is a security improvement - no admin API usage
-    
-    console.log("Quote request submitted successfully. Band owner notification would be sent if contact email is configured.", {
-      bandId: data.bandId,
-      bandOwnerUserId,
-    });
+    // Send notification email to band owner if they have a contact_email configured
+    if (band.contact_email && INTERNAL_API_SECRET) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      fetch(`${supabaseUrl}/functions/v1/send-booking-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": INTERNAL_API_SECRET,
+        },
+        body: JSON.stringify({
+          bandEmail: band.contact_email,
+          bandName: band.name,
+          clientName: data.name,
+          clientEmail: data.email,
+          clientPhone: data.phone,
+          eventType: data.eventType,
+          eventDate: data.date,
+          eventLocation: data.location,
+          message: data.details,
+        }),
+      }).catch(err => console.error("Failed to send band notification email:", err));
+      
+      console.log("Band notification email queued for:", band.contact_email);
+    } else if (!band.contact_email) {
+      console.log("Band has no contact_email configured - skipping notification");
+    }
 
     // Send confirmation email to client using internal secret (fire and forget - don't block on this)
     if (INTERNAL_API_SECRET) {
